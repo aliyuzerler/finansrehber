@@ -2,11 +2,14 @@ import { Route, Routes } from "react-router-dom";
 
 import Layout from "./components/Layout";
 import PlaceholderPage from "./components/PlaceholderPage";
+import CalendarPage from "./pages/CalendarPage";
 import CryptoPage from "./pages/CryptoPage";
 import FundDetailPage from "./pages/FundDetailPage";
 import FundsPage from "./pages/FundsPage";
 import FxPage from "./pages/FxPage";
 import HomePage from "./pages/HomePage";
+import MacroPage from "./pages/MacroPage";
+import ViopPage from "./pages/ViopPage";
 import { IndexDetailPage, IndicesPage } from "./pages/IndicesPage";
 import PortfolioPage from "./pages/PortfolioPage";
 import ScreenerPage from "./pages/ScreenerPage";
@@ -28,9 +31,9 @@ export default function App() {
         <Route path="fonlar/:code" element={<FundDetailPage />} />
         <Route path="tarama" element={<ScreenerPage />} />
         <Route path="portfoy" element={<PortfolioPage />} />
-        <Route path="makro" element={<PlaceholderPage title="Makro" />} />
-        <Route path="viop" element={<PlaceholderPage title="VIOP" />} />
-        <Route path="takvim" element={<PlaceholderPage title="Ekonomik Takvim" />} />
+        <Route path="makro" element={<MacroPage />} />
+        <Route path="viop" element={<ViopPage />} />
+        <Route path="takvim" element={<CalendarPage />} />
         <Route path="*" element={<PlaceholderPage title="Sayfa Bulunamadı" />} />
       </Route>
     </Routes>
