@@ -1,17 +1,26 @@
+import { Route, Routes } from "react-router-dom";
+
+import Layout from "./components/Layout";
+import PlaceholderPage from "./components/PlaceholderPage";
+import HomePage from "./pages/HomePage";
+
 export default function App() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-bg">
-      <div className="border border-line bg-panel px-12 py-10 text-center shadow-[0_0_0_1px_#000,8px_8px_0_0_#e10600]">
-        <p className="font-mono text-xs uppercase tracking-[0.35em] text-accent">
-          FinansRehber
-        </p>
-        <h1 className="mt-4 text-4xl font-extrabold uppercase tracking-tight text-ink">
-          Kurulum Tamam
-        </h1>
-        <p className="mt-3 max-w-md text-sm text-muted">
-          Faz 0 duman testi — siyah/kırmızı tema ve keskin çizgiler aktif.
-        </p>
-      </div>
-    </div>
-  )
+    <Routes>
+      <Route element={<Layout />}>
+        <Route index element={<HomePage />} />
+        <Route path="hisseler" element={<PlaceholderPage title="Hisseler" />} />
+        <Route path="endeksler" element={<PlaceholderPage title="Endeksler" />} />
+        <Route path="doviz" element={<PlaceholderPage title="Döviz & Altın" />} />
+        <Route path="kripto" element={<PlaceholderPage title="Kripto" />} />
+        <Route path="fonlar" element={<PlaceholderPage title="Fonlar" />} />
+        <Route path="tarama" element={<PlaceholderPage title="Tarama" />} />
+        <Route path="portfoy" element={<PlaceholderPage title="Portföy" />} />
+        <Route path="makro" element={<PlaceholderPage title="Makro" />} />
+        <Route path="viop" element={<PlaceholderPage title="VIOP" />} />
+        <Route path="takvim" element={<PlaceholderPage title="Ekonomik Takvim" />} />
+        <Route path="*" element={<PlaceholderPage title="Sayfa Bulunamadı" />} />
+      </Route>
+    </Routes>
+  );
 }
