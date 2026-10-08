@@ -3,13 +3,16 @@ import { Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import PlaceholderPage from "./components/PlaceholderPage";
 import HomePage from "./pages/HomePage";
+import StockDetailPage from "./pages/StockDetailPage";
+import StocksPage from "./pages/StocksPage";
 
 export default function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<HomePage />} />
-        <Route path="hisseler" element={<PlaceholderPage title="Hisseler" />} />
+        <Route path="hisseler" element={<StocksPage />} />
+        <Route path="hisse/:symbol" element={<StockDetailPage />} />
         <Route path="endeksler" element={<PlaceholderPage title="Endeksler" />} />
         <Route path="doviz" element={<PlaceholderPage title="Döviz & Altın" />} />
         <Route path="kripto" element={<PlaceholderPage title="Kripto" />} />

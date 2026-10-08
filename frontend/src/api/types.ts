@@ -57,6 +57,7 @@ export interface StockInfo {
   trailingPE?: number | null;
   priceToBook?: number | null;
   dividendYield?: number | null;
+  trailingAnnualDividendYield?: number | null;
   fiftyTwoWeekHigh?: number | null;
   fiftyTwoWeekLow?: number | null;
   fiftyDayAverage?: number | null;

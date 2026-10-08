@@ -26,7 +26,7 @@ def list_stocks(refresh: bool = Query(False, description="Önbelleği atla")) ->
     """Tüm BIST hisseleri: son fiyat, değişim %, hacim, piyasa değeri (TradingView scan)."""
     global _list_cache
     if _list_cache is not None and not refresh:
-        return {"stocks": _list_cache, "cached": True}
+        return {"count": len(_list_cache), "stocks": _list_cache, "cached": True}
 
     df = borsapy.scan("XUTUM", "close > 0", limit=1000)
     if df.empty:
