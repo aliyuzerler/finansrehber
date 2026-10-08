@@ -76,6 +76,10 @@ export interface Candle {
   low: number | null;
   close: number | null;
   volume?: number | null;
+  /** Fon (TEFAS) serileri: close yerine price kolonu gelir. */
+  price?: number | null;
+  fundsize?: number | null;
+  investors?: number | null;
 }
 
 export interface HistoryResponse {

@@ -3,6 +3,8 @@ import { Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import PlaceholderPage from "./components/PlaceholderPage";
 import CryptoPage from "./pages/CryptoPage";
+import FundDetailPage from "./pages/FundDetailPage";
+import FundsPage from "./pages/FundsPage";
 import FxPage from "./pages/FxPage";
 import HomePage from "./pages/HomePage";
 import { IndexDetailPage, IndicesPage } from "./pages/IndicesPage";
@@ -20,7 +22,8 @@ export default function App() {
         <Route path="endeksler/:symbol" element={<IndexDetailPage />} />
         <Route path="doviz" element={<FxPage />} />
         <Route path="kripto" element={<CryptoPage />} />
-        <Route path="fonlar" element={<PlaceholderPage title="Fonlar" />} />
+        <Route path="fonlar" element={<FundsPage />} />
+        <Route path="fonlar/:code" element={<FundDetailPage />} />
         <Route path="tarama" element={<PlaceholderPage title="Tarama" />} />
         <Route path="portfoy" element={<PlaceholderPage title="Portföy" />} />
         <Route path="makro" element={<PlaceholderPage title="Makro" />} />
