@@ -2,12 +2,30 @@
 
 from __future__ import annotations
 
+import time
+from concurrent.futures import ThreadPoolExecutor
+
 import borsapy
 from fastapi import APIRouter, HTTPException, Query
 
 from app.helpers import df_to_records, history_records, json_safe
 
 router = APIRouter(prefix="/api/indices", tags=["indices"])
+
+_detailed_cache: tuple[float, list[dict]] | None = None
+_CACHE_TTL = 120  # saniye
+
+
+def _index_quote(sym: str) -> dict:
+    try:
+        info = borsapy.Index(sym).info
+        return {
+            "last": info.get("last"),
+            "change": info.get("change"),
+            "change_percent": info.get("change_percent"),
+        }
+    except Exception:
+        return {}
 
 
 @router.get("")
@@ -25,19 +43,23 @@ def list_indices(detailed: bool = Query(False, description="Güncel fiyat/deği�
     else:
         records = [json_safe(x) if not isinstance(x, str) else {"symbol": x, "name": x} for x in idx_list]
 
-    enriched = []
-    for rec in records:
-        sym = str(rec.get("symbol", ""))
-        try:
-            info = borsapy.Index(sym).info
-            rec.update(
-                last=info.get("last"),
-                change=info.get("change"),
-                change_percent=info.get("change_percent"),
-            )
-        except Exception:
-            pass
-        enriched.append(rec)
+    if not detailed:
+        return {"indices": records}
+
+    global _detailed_cache
+    now = time.time()
+    if _detailed_cache is not None and now - _detailed_cache[0] < _CACHE_TTL:
+        return {"indices": _detailed_cache[1], "cached": True}
+
+    quotes = list(
+        ThreadPoolExecutor(max_workers=4).map(
+            _index_quote, [str(r.get("symbol", "")) for r in records]
+        )
+    )
+    enriched = [{**rec, **q} for rec, q in zip(records, quotes)]
+    # rate limit yüzünden çok boş döndüyse önbelleğe alma
+    if sum(1 for q in quotes if not q) <= len(quotes) // 4:
+        _detailed_cache = (now, enriched)
     return {"indices": enriched}
 
 

@@ -31,6 +31,11 @@ export default function PriceChart({ candles, height = 320 }: PriceChartProps) {
       },
       rightPriceScale: { borderColor: "#272727" },
       timeScale: { borderColor: "#272727", rightOffset: 3 },
+      localization: {
+        locale: "tr-TR",
+        priceFormatter: (p: number) =>
+          p.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      },
       crosshair: {
         vertLine: { color: "#e10600", labelBackgroundColor: "#e10600" },
         horzLine: { color: "#e10600", labelBackgroundColor: "#e10600" },
@@ -52,8 +57,22 @@ export default function PriceChart({ candles, height = 320 }: PriceChartProps) {
       .filter((v, i, arr) => i === 0 || v.time !== arr[i - 1].time)
       .sort((a, b) => a.time.localeCompare(b.time));
 
+    const fit = () => {
+      const ts = chart.timeScale();
+      ts.fitContent();
+      // kenarlarda nefes payı: ilk/son ay etiketleri kırpılmasın
+      const range = ts.getVisibleLogicalRange();
+      if (range) ts.setVisibleLogicalRange({ from: range.from - 2, to: range.to + 4 });
+    };
+
     series.setData(data);
-    chart.timeScale().fitContent();
+    fit();
+    // StrictMode çift montajı / ResizeObserver yarışı: ilk boyutlandırmadan sonra bir kez daha oturt
+    const raf = requestAnimationFrame(fit);
+    const settle = setTimeout(() => {
+      chart.applyOptions({ width: el.clientWidth, height });
+      fit();
+    }, 150);
 
     const ro = new ResizeObserver(() => {
       chart.applyOptions({ width: el.clientWidth });
@@ -61,6 +80,8 @@ export default function PriceChart({ candles, height = 320 }: PriceChartProps) {
     ro.observe(el);
 
     return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(settle);
       ro.disconnect();
       chart.remove();
     };

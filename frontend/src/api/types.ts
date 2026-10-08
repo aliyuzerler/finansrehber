@@ -2,6 +2,7 @@ export interface AssetQuote {
   symbol: string;
   label?: string;
   kind?: "index" | "fx" | "crypto";
+  group?: string;
   last?: number | null;
   open?: number | null;
   high?: number | null;
