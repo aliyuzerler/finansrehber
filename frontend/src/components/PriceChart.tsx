@@ -24,6 +24,7 @@ export default function PriceChart({ candles, height = 320 }: PriceChartProps) {
         textColor: "#8f8f8f",
         fontFamily: "'JetBrains Mono', monospace",
         fontSize: 11,
+        attributionLogo: false,
       },
       grid: {
         vertLines: { color: "#1e1e1e" },
@@ -94,5 +95,12 @@ export default function PriceChart({ candles, height = 320 }: PriceChartProps) {
       </div>
     );
   }
-  return <div ref={containerRef} className="border border-line bg-panel" style={{ height }} />;
+  return (
+    <div>
+      <div ref={containerRef} className="border border-line bg-panel" style={{ height }} />
+      <p className="mt-1 text-right font-mono text-[9px] uppercase tracking-widest text-faint">
+        grafik: TradingView lightweight-charts
+      </p>
+    </div>
+  );
 }
