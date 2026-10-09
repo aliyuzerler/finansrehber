@@ -5,6 +5,7 @@ import type { AssetQuote, MarketSummary } from "../api/types";
 import ChangeBadge from "../components/ChangeBadge";
 import ErrorBox from "../components/ErrorBox";
 import LoadingBlock from "../components/LoadingBlock";
+import SourceStatus from "../components/SourceStatus";
 import StatCard from "../components/StatCard";
 import { fmtCompact, fmtPct, fmtPrice, pctFromOpen } from "../lib/format";
 
@@ -189,6 +190,8 @@ export default function HomePage() {
           </div>
         </>
       )}
+
+      <SourceStatus />
     </div>
   );
 }
