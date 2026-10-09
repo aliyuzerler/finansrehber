@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import math
+import threading
+import time
 from collections.abc import Mapping
 from datetime import date, datetime
 from typing import Any
@@ -57,3 +59,55 @@ def history_records(df: pd.DataFrame) -> list[dict]:
 
 def clean_dict(d: dict) -> dict:
     return json_safe(d)  # type: ignore[return-value]
+
+
+# --- single-flight TTL cache: önbellek miss'inde anahtar başına TEK upstream çağrısı ---
+_sf_locks: dict[str, threading.Lock] = {}
+_sf_guard = threading.Lock()
+
+
+def cached_fetch(store: dict, key: str, ttl: float, fetch):
+    """TTL + single-flight + stale-while-revalidate.
+
+    - Taze değer varsa anında döner.
+    - Değer yoksa (ilk kullanım): anahtar kilidiyle TEK fetch yapar, diğerleri bekler.
+    - Değer bayat ama varsa: bayat değeri ANINDA döner, yenilemeyi arka plan
+      iş parçacığında yapar (yük altında kuyruk/bloklanma olmaz).
+    """
+    now = time.time()
+    hit = store.get(key)
+    if hit and now - hit[0] < ttl:
+        return hit[1]
+    with _sf_guard:
+        lock = _sf_locks.setdefault(key, threading.Lock())
+    if not lock.acquire(blocking=False):
+        if hit:  # bayat ama var — beklemeden dön, arka planda tazelensin
+            threading.Thread(target=_refresh_safely, args=(store, key, ttl, fetch), daemon=True).start()
+            return hit[1]
+        with lock:  # bayat da yok — ilk kullanım, beklemek zorundayız
+            hit = store.get(key)
+            if hit:
+                return hit[1]
+            value = fetch()
+            store[key] = (time.time(), value)
+            return value
+    try:
+        hit = store.get(key)
+        if hit and now - hit[0] < ttl:  # kilidi beklerken tazelendi
+            return hit[1]
+        value = fetch()
+        store[key] = (time.time(), value)
+        return value
+    finally:
+        lock.release()
+
+
+def _refresh_safely(store: dict, key: str, ttl: float, fetch) -> None:
+    with _sf_locks.setdefault(key, threading.Lock()):
+        hit = store.get(key)
+        if hit and time.time() - hit[0] < ttl:  # bu sırada biri tazelediyse atla
+            return
+        try:
+            store[key] = (time.time(), fetch())
+        except Exception:
+            pass  # arka plan yenilemesi başarısızsa bayat değer kalmaya devam eder

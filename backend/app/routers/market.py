@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import time
-
 from fastapi import APIRouter
 
 from app.helpers import clean_dict
@@ -22,8 +20,7 @@ _SUMMARY_ASSETS: list[tuple[str, str, str]] = [
     ("crypto", "BTCTRY", "Bitcoin/TRY"),
 ]
 
-_cache: dict | None = None
-_cache_ts: float = 0.0
+_store: dict = {}
 _CACHE_TTL = 60  # saniye
 
 
@@ -40,14 +37,7 @@ def _fetch_asset(kind: str, symbol: str) -> dict:
     return info
 
 
-@router.get("/summary")
-def market_summary() -> dict:
-    global _cache, _cache_ts
-
-    now = time.time()
-    if _cache is not None and now - _cache_ts < _CACHE_TTL:
-        return {"assets": _cache, "cached": True}
-
+def _fetch_summary() -> dict:
     assets: list[dict] = []
     errors: list[dict] = []
     for kind, symbol, label in _SUMMARY_ASSETS:
@@ -58,7 +48,12 @@ def market_summary() -> dict:
             assets.append(info)
         except Exception as exc:  # tek başarısız varlık tüm sayfayı düşürmesin
             errors.append({"symbol": symbol, "error": str(exc)[:200]})
+    return {"assets": assets, "errors": errors}
 
-    _cache = assets
-    _cache_ts = now
-    return {"assets": assets, "errors": errors, "cached": False}
+
+@router.get("/summary")
+def market_summary() -> dict:
+    from app.helpers import cached_fetch
+
+    result = cached_fetch(_store, "summary", _CACHE_TTL, _fetch_summary)
+    return {**result, "cached": False}

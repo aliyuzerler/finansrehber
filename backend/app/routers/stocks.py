@@ -5,12 +5,16 @@ from __future__ import annotations
 import borsapy
 from fastapi import APIRouter, HTTPException, Query
 
-from app.helpers import df_to_records, history_records, json_safe
+from app.helpers import cached_fetch, df_to_records, history_records, json_safe
 from app.validators import is_symbol
 
 router = APIRouter(prefix="/api/stocks", tags=["stocks"])
 
 _list_cache: dict | None = None
+_detail_cache: dict[str, tuple[float, dict]] = {}
+_hist_cache: dict[str, tuple[float, dict]] = {}
+_TTL_DETAIL = 60  # sn — borsapy Ticker.info'yu önbelleklemediği için biz tutuyoruz
+_TTL_HIST = 300  # sn — ~15 dk gecikmeli veri için yeterli
 
 
 def _company_names() -> dict[str, str]:
@@ -66,13 +70,19 @@ def _ticker(symbol: str) -> borsapy.Ticker:
 
 @router.get("/{symbol}")
 def stock_detail(symbol: str) -> dict:
+    sym = symbol.strip().upper().removesuffix(".IS")
     try:
-        info = json_safe(_ticker(symbol).info)
+        info = cached_fetch(
+            _detail_cache,
+            sym,
+            _TTL_DETAIL,
+            lambda: json_safe(_ticker(sym).info),
+        )
     except HTTPException:
         raise
     except Exception as exc:
         raise HTTPException(502, f"Veri alınamadı: {exc}") from exc
-    return {"info": info}
+    return {"info": info, "cached": False}
 
 
 @router.get("/{symbol}/history")
@@ -81,17 +91,22 @@ def stock_history(
     period: str = Query("1mo", pattern="^(1d|5d|1mo|3mo|6mo|1y|2y|5y|10y|ytd|max)$"),
     interval: str = Query("1d", pattern="^(1m|5m|15m|30m|1h|1d|1wk|1mo)$"),
 ) -> dict:
-    try:
-        hist = _ticker(symbol).history(period=period, interval=interval)
-    except Exception as exc:
-        raise HTTPException(502, f"Geçmiş alınamadı: {exc}") from exc
-    if hist is None or hist.empty:
-        return {"candles": [], "period": period, "interval": interval}
-    return {
-        "candles": history_records(hist),
-        "period": period,
-        "interval": interval,
-    }
+    cache_key = f"{symbol.upper()}|{period}|{interval}"
+
+    def _fetch() -> dict:
+        try:
+            hist = _ticker(symbol).history(period=period, interval=interval)
+        except Exception as exc:
+            raise HTTPException(502, f"Geçmiş alınamadı: {exc}") from exc
+        if hist is None or hist.empty:
+            return {"candles": [], "period": period, "interval": interval}
+        return {
+            "candles": history_records(hist),
+            "period": period,
+            "interval": interval,
+        }
+
+    return cached_fetch(_hist_cache, cache_key, _TTL_HIST, _fetch)
 
 
 @router.get("/{symbol}/financials")

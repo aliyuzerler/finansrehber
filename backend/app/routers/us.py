@@ -7,12 +7,12 @@ import time
 import yfinance as yf
 from fastapi import APIRouter, HTTPException, Query
 
-from app.helpers import history_records, json_safe
+from app.helpers import cached_fetch, history_records, json_safe
 from app.validators import is_us_symbol
 
 router = APIRouter(prefix="/api/us", tags=["us"])
 
-_list_cache: tuple[float, list[dict]] | None = None
+_list_cache: dict = {}
 _LIST_TTL = 600  # 10 dk — Yahoo rate limit'e karşı
 _indices_cache: tuple[float, list[dict]] | None = None
 _INDICES_TTL = 60
@@ -57,35 +57,34 @@ def us_indices() -> dict:
 @router.get("/stocks")
 def us_stocks(refresh: bool = Query(False, description="Önbelleği atla")) -> dict:
     """Piyasa değerine göre en büyük 500 ABD hissesi (S&P 500 çekirdeği)."""
-    global _list_cache
-    if _list_cache is not None and not refresh:
-        return {"count": len(_list_cache[1]), "stocks": _list_cache[1], "cached": True}
 
-    stocks: list[dict] = []
-    q = yf.EquityQuery("eq", ["region", "us"])
-    for offset in (0, 250):
-        try:
+    def _fetch() -> list[dict]:
+        stocks: list[dict] = []
+        q = yf.EquityQuery("eq", ["region", "us"])
+        for offset in (0, 250):
             r = yf.screen(q, size=250, offset=offset, sortField="intradaymarketcap", sortAsc=False)
-        except Exception as exc:
-            raise HTTPException(502, f"ABD hisse listesi alınamadı: {exc}") from exc
-        for row in r.get("quotes", []):
-            sym = row.get("symbol") or ""
-            if not sym or "^" in sym or "=" in sym:
-                continue
-            stocks.append(
-                {
-                    "symbol": sym,
-                    "name": row.get("shortName") or row.get("longName") or sym,
-                    "price": row.get("regularMarketPrice"),
-                    "change": row.get("regularMarketChangePercent"),
-                    "volume": row.get("regularMarketVolume"),
-                    "market_cap": row.get("marketCap"),
-                    "exchange": row.get("fullExchangeName"),
-                }
-            )
-    stocks.sort(key=lambda s: -(s.get("market_cap") or 0))
-    _list_cache = (time.time(), stocks)
-    return {"count": len(stocks), "stocks": stocks, "cached": False}
+            for row in r.get("quotes", []):
+                sym = row.get("symbol") or ""
+                if not sym or "^" in sym or "=" in sym:
+                    continue
+                stocks.append(
+                    {
+                        "symbol": sym,
+                        "name": row.get("shortName") or row.get("longName") or sym,
+                        "price": row.get("regularMarketPrice"),
+                        "change": row.get("regularMarketChangePercent"),
+                        "volume": row.get("regularMarketVolume"),
+                        "market_cap": row.get("marketCap"),
+                        "exchange": row.get("fullExchangeName"),
+                    }
+                )
+        stocks.sort(key=lambda s: -(s.get("market_cap") or 0))
+        return stocks
+
+    if refresh:
+        _list_cache.clear()
+    stocks = cached_fetch(_list_cache, "us500", _LIST_TTL, _fetch)
+    return {"count": len(stocks), "stocks": stocks, "cached": True}
 
 
 @router.get("/stocks/{symbol}")

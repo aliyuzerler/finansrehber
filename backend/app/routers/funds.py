@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import time
+
 import borsapy
 from fastapi import APIRouter, HTTPException, Query
 
-from app.helpers import df_to_records, history_records, json_safe
+from app.helpers import cached_fetch, df_to_records, history_records, json_safe
 
 router = APIRouter(prefix="/api/funds", tags=["funds"])
+
+_list_cache: dict[str, tuple[float, dict]] = {}
+_TTL_LIST = 300  # sn — fon verileri günde bir güncellenir
 
 
 @router.get("")
@@ -16,6 +21,17 @@ def list_funds(
     founder: str | None = Query(None, description="Kurucu adında arama"),
     limit: int = Query(100, ge=1, le=800),
 ) -> dict:
+    cache_key = f"{fund_type}|{founder or ''}|{limit}"
+    payload = cached_fetch(
+        _list_cache,
+        cache_key,
+        _TTL_LIST,
+        lambda: _fetch_fund_list(fund_type, founder, limit),
+    )
+    return {**payload, "cached": False}
+
+
+def _fetch_fund_list(fund_type: str, founder: str | None, limit: int) -> dict:
     try:
         df = borsapy.screen_funds(fund_type=fund_type, founder=founder, limit=limit)
     except Exception as exc:
