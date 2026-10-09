@@ -1,5 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 
+import AiPage from "./pages/AiPage";
 import Layout from "./components/Layout";
 import PlaceholderPage from "./components/PlaceholderPage";
 import CalendarPage from "./pages/CalendarPage";
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="makro" element={<MacroPage />} />
         <Route path="viop" element={<ViopPage />} />
         <Route path="takvim" element={<CalendarPage />} />
+        <Route path="ai" element={<AiPage />} />
         <Route path="*" element={<PlaceholderPage title="Sayfa Bulunamadı" />} />
       </Route>
     </Routes>

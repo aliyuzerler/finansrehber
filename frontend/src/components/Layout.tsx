@@ -13,6 +13,7 @@ const NAV = [
   { to: "/makro", label: "Makro" },
   { to: "/viop", label: "VIOP" },
   { to: "/takvim", label: "Takvim" },
+  { to: "/ai", label: "AI Analist" },
 ];
 
 export default function Layout() {
