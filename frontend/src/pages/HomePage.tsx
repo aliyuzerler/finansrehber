@@ -51,6 +51,7 @@ function section(title: string, assets: AssetQuote[], cols: string) {
 
 export default function HomePage() {
   const [summary, setSummary] = useState<MarketSummary | null>(null);
+  const [usIndices, setUsIndices] = useState<{ symbol: string; name: string; last?: number | null; change_percent?: number | null; error?: string }[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -71,6 +72,13 @@ export default function HomePage() {
     const t = setInterval(load, REFRESH_MS);
     return () => clearInterval(t);
   }, [load]);
+
+  useEffect(() => {
+    api
+      .get<{ indices: { symbol: string; name: string; last?: number | null; change_percent?: number | null; error?: string }[] }>("/us/indices")
+      .then(({ data }) => setUsIndices(data.indices))
+      .catch(() => setUsIndices([]));
+  }, []);
 
   const assets = summary?.assets ?? [];
   const indexes = assets.filter((a) => a.kind === "index");
@@ -113,6 +121,33 @@ export default function HomePage() {
           {section("Döviz", currencies, "grid-cols-1 sm:grid-cols-2")}
           {section("Altın & Emtia", metals, "grid-cols-1 sm:grid-cols-3")}
           {section("Kripto", cryptos, "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4")}
+
+          {usIndices && usIndices.length > 0 && (
+            <section className="mt-8">
+              <div className="mb-3 flex items-center gap-3">
+                <h2 className="font-mono text-xs font-bold uppercase tracking-[0.25em] text-muted">
+                  ABD Endeksleri
+                </h2>
+                <div className="h-px flex-1 bg-line" />
+                <span className="font-mono text-[10px] uppercase tracking-widest text-faint">
+                  Yahoo Finance
+                </span>
+              </div>
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+                {usIndices.map((idx) => (
+                  <StatCard
+                    key={idx.symbol}
+                    label={idx.name}
+                    sublabel={idx.symbol}
+                    value={fmtPrice(idx.last ?? null)}
+                    changePercent={idx.change_percent ?? null}
+                    to="/abd-borsa"
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
           {assets.length === 0 && (
             <ErrorBox message="Piyasa verisi alınamadı." onRetry={load} />
           )}

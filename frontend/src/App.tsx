@@ -15,6 +15,7 @@ import PortfolioPage from "./pages/PortfolioPage";
 import ScreenerPage from "./pages/ScreenerPage";
 import StockDetailPage from "./pages/StockDetailPage";
 import StocksPage from "./pages/StocksPage";
+import { UsStockDetailPage, UsStocksPage } from "./pages/UsStocksPage";
 
 export default function App() {
   return (
@@ -23,6 +24,8 @@ export default function App() {
         <Route index element={<HomePage />} />
         <Route path="hisseler" element={<StocksPage />} />
         <Route path="hisse/:symbol" element={<StockDetailPage />} />
+        <Route path="abd-borsa" element={<UsStocksPage />} />
+        <Route path="abd-borsa/:symbol" element={<UsStockDetailPage />} />
         <Route path="endeksler" element={<IndicesPage />} />
         <Route path="endeksler/:symbol" element={<IndexDetailPage />} />
         <Route path="doviz" element={<FxPage />} />

@@ -3,6 +3,7 @@ import { NavLink, Outlet } from "react-router-dom";
 const NAV = [
   { to: "/", label: "Ana Sayfa", end: true },
   { to: "/hisseler", label: "Hisseler" },
+  { to: "/abd-borsa", label: "ABD Borsası" },
   { to: "/endeksler", label: "Endeksler" },
   { to: "/doviz", label: "Döviz & Altın" },
   { to: "/kripto", label: "Kripto" },

@@ -17,7 +17,7 @@ export default function PriceChart({ candles, height = 320 }: PriceChartProps) {
     if (!el || candles.length === 0) return;
 
     const chart = createChart(el, {
-      width: el.clientWidth,
+      autoSize: true, // genişliği/yüksekliği kendisi izler — manuel RO yarışı olmaz
       height,
       layout: {
         background: { type: ColorType.Solid, color: "#121212" },
@@ -58,32 +58,13 @@ export default function PriceChart({ candles, height = 320 }: PriceChartProps) {
       .filter((v, i, arr) => i === 0 || v.time !== arr[i - 1].time)
       .sort((a, b) => a.time.localeCompare(b.time));
 
-    const fit = () => {
-      const ts = chart.timeScale();
-      ts.fitContent();
-      // kenarlarda nefes payı: ilk/son ay etiketleri kırpılmasın
-      const range = ts.getVisibleLogicalRange();
-      if (range) ts.setVisibleLogicalRange({ from: range.from - 2, to: range.to + 4 });
-    };
-
     series.setData(data);
-    fit();
-    // StrictMode çift montajı / ResizeObserver yarışı: ilk boyutlandırmadan sonra bir kez daha oturt
-    const raf = requestAnimationFrame(fit);
-    const settle = setTimeout(() => {
-      chart.applyOptions({ width: el.clientWidth, height });
-      fit();
-    }, 150);
-
-    const ro = new ResizeObserver(() => {
-      chart.applyOptions({ width: el.clientWidth });
-    });
-    ro.observe(el);
+    chart.timeScale().fitContent();
+    // autoSize ilk ölçümünü yaptıktan sonra bir kez daha oturt
+    const settle = setTimeout(() => chart.timeScale().fitContent(), 120);
 
     return () => {
-      cancelAnimationFrame(raf);
       clearTimeout(settle);
-      ro.disconnect();
       chart.remove();
     };
   }, [candles, height]);
