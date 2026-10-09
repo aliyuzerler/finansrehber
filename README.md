@@ -92,6 +92,18 @@ finansrehber/
 
 Önbellekleme: borsapy içinde TTL önbellek (fiyat 60 sn, grafik 1 saat, finansallar 24 saat) + FastAPI tarafında piyasa özeti 60 sn / endeks listesi 120 sn.
 
+## Rehber AI — sesli finans asistanı (Gemini)
+
+Sağ üstteki **"AI Analist"** sekmesi, Gemini 2.5 Flash ile çalışan kişisel finans asistanıdır:
+
+- 🎤 **Sesli sor:** Mikrofon düğmesiyle konuş (tarayıcının konuşma tanıması, Chrome/Edge, tr-TR).
+- 🔊 **Sesli cevap al:** Yanıtlar Türkçe sesli okunur; düğmeyle kapatılabilir.
+- 📊 **Bağlam bilir:** Fon/hisse detay sayfasındaki "🤖 AI ile Analiz Et" düğmesiyle açılırsa o varlığın canlı verilerini (getiri, risk, F/K…) otomatik okuyup analiz eder.
+- 📁 **Portföyünü bilir:** "Portföyüm dahil" açıkken portföyündeki pozisyonları değerlendirir.
+- 🌐 **Web'de arar:** Güncel bilgi gerektiğinde Google Search ile arar, kullandığı kaynakları listeler.
+
+Kurulum: [aistudio.google.com/apikey](https://aistudio.google.com/apikey) → ücretsiz anahtar al → `backend/.env` dosyasına `GEMINI_API_KEY=...` yaz → backend'i yeniden başlat. Anahtar sunucuda kalır, tarayıcıya gönderilmez. Rehber AI yatırım tavsiyesi vermez.
+
 ## Veri kaynakları ve sağlık panosu
 
 Kodda **elle yazılmış veri linki yoktur** — tüm veriler `borsapy` ve `yfinance` kütüphaneleri üzerinden gelir; kırılma riski kütüphane bakımcılarına aittir ve iki kütüphane de aktif güncellenir.
