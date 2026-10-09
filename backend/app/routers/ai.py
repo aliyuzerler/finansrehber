@@ -21,8 +21,8 @@ Kullanıcının seninle birebir sohbet eden, sesli konuştuğu kişisel finans d
 
 Kurallar:
 - Her zaman Türkçe, samimi ama profesyonel konuş. Kullanıcıya "siz" diye hitap et.
-- Sayısal verileri (fiyat, getiri, risk) mümkün olduğunca sana verilen BAĞLAM bloğundan al; bağlamda yoksa güncel veri için google_search aracını KULLAN.
-- Kaynak kullandıysan cevabın sonunda "Kaynaklar:" başlığıyla linkleri metin olarak say.
+- Sayısal verileri (fiyat, getiri, risk) mümkün olduğunca sana verilen BAĞLAM bloğundan al; güncel bilgi gerekiyorsa sana verilen WEB ARAMA SONUÇLARI bloğunu kullan.
+- WEB ARAMA SONUÇLARI bloğu varsa ve kullandıysan cevabın sonunda "Kaynaklar:" başlığıyla linkleri metin olarak say.
 - Cevaplar kısa ve net olsun: önce doğrudan cevap, sonra 2-4 madde gerekçe. Gereksiz uzun yazma (kullanıcı sesli dinleyecek).
 - Asla kesin yatırım tavsiyesi verme ("kesinlikle al" değil); senaryoları ve riskleri açıkla, kararı kullanıcıya bırak.
 - Uygun olduğunda cevabı "Yatırım tavsiyesi değildir" cümlesiyle kapat.
@@ -156,7 +156,7 @@ def _build_context(req: AskRequest) -> str:
 
 
 def _ddgs_search(query: str, max_results: int = 5) -> list[dict]:
-    """Anahtarsız DuckDuckGo araması — Google grounding kotası bitince yedek."""
+    """Anahtarsız DuckDuckGo araması — Tavily kotası bitince veya erişilemezse yedek."""
     from ddgs import DDGS
 
     with DDGS() as d:
@@ -165,6 +165,26 @@ def _ddgs_search(query: str, max_results: int = 5) -> list[dict]:
         {"title": r.get("title", ""), "url": r.get("href", ""), "body": r.get("body", "")}
         for r in raw
         if r.get("href")
+    ]
+
+
+def _tavily_search(query: str, max_results: int = 5) -> list[dict]:
+    """Tavily (AI odaklı arama) — birincil web araması. ~1.000 ücretsiz çağrı/ay."""
+    key = os.environ.get("TAVILY_API_KEY", "").strip()
+    if not key:
+        raise RuntimeError("TAVILY_API_KEY tanımlı değil")
+    from tavily import TavilyClient
+
+    client = TavilyClient(key)
+    r = client.search(query, max_results=max_results)
+    return [
+        {
+            "title": x.get("title", ""),
+            "url": x.get("url", ""),
+            "body": str(x.get("content", ""))[:300],
+        }
+        for x in r.get("results", [])
+        if x.get("url")
     ]
 
 
@@ -189,13 +209,12 @@ def ask(req: AskRequest) -> dict:
 
     model = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
 
-    def _generate(text: str, use_search: bool):
+    def _generate(text: str):
         """Geçici 429/503 hatalarında kısa geri çekilmeli 2 deneme."""
         last_exc: Exception | None = None
         for attempt in range(2):
             config = types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
-                tools=[types.Tool(google_search=types.GoogleSearch())] if use_search else None,
                 temperature=0.4,
             )
             try:
@@ -211,63 +230,43 @@ def ask(req: AskRequest) -> dict:
                 raise
         raise last_exc  # type: ignore[misc]
 
+    # Web araması zinciri: Tavily (birincil) → DDGS (yedek) → aramsız
     search_source: str | None = None
     search_results: list[dict] = []
-
     try:
-        resp = _generate(user_text, use_search=True)
-        search_source = "google"
-    except HTTPException:
-        raise
-    except Exception as exc:
-        if "429" not in str(exc):
-            raise HTTPException(502, f"Gemini hatası: {str(exc)[:200]}") from exc
-        # Google Search grounding kotası bitmiş olabilir → DuckDuckGo ile kendimiz arar,
-        # sonuçları bağlam olarak verip araçsız yeniden üretiriz.
+        search_results = _tavily_search(req.question)
+        search_source = "tavily"
+    except Exception:
         try:
             search_results = _ddgs_search(req.question)
+            search_source = "ddgs"
         except Exception:
             search_results = []
-        if search_results:
-            bugun = time.strftime("%d.%m.%Y")
-            blok = "\n".join(f"- {r['title']} ({r['url']}): {r['body']}" for r in search_results)
-            user_text = (
-                f"{user_text}\n\n[WEB ARAMA SONUÇLARI — DuckDuckGo, {bugun}]\n{blok}\n"
-                "[/WEB ARAMA]\nBu sonuçlardaki güncel bilgileri kullan; kullandığın kaynak linklerini cevabının sonunda say."
-            )
-        try:
-            resp = _generate(user_text, use_search=False)
-            search_source = "ddgs" if search_results else None
-        except Exception as exc2:
-            raise HTTPException(502, f"Gemini hatası: {str(exc2)[:200]}") from exc2
+            search_source = None
+
+    if search_results:
+        bugun = time.strftime("%d.%m.%Y")
+        blok = "\n".join(f"- {r['title']} ({r['url']}): {r['body']}" for r in search_results)
+        user_text = (
+            f"{user_text}\n\n[WEB ARAMA SONUÇLARI — {search_source}, {bugun}]\n{blok}\n"
+            "[/WEB ARAMA]\nBu sonuçlardaki güncel bilgileri kullan; kullandığın kaynak linklerini cevabının sonunda say."
+        )
+
+    resp = _generate(user_text)
 
     answer = resp.text or ""
     if not answer:
         raise HTTPException(502, "Gemini boş yanıt döndü")
 
+    # Kaynaklar: web araması yaptıysak bizim verdiğimiz linkler
     sources: list[dict] = []
-    queries: list[str] = []
-    try:
-        cand = resp.candidates[0]
-        meta = getattr(cand, "grounding_metadata", None)
-        if meta:
-            for chunk in getattr(meta, "grounding_chunks", None) or []:
-                web = getattr(chunk, "web", None)
-                if web is not None and getattr(web, "uri", None):
-                    sources.append({"title": getattr(web, "title", "") or web.uri, "url": web.uri})
-            queries = list(getattr(meta, "web_search_queries", None) or [])
-    except Exception:
-        pass
-    if search_source == "ddgs" and not sources:
-        # DuckDuckGo fallback: kaynakları biz verdik
+    if search_source:
         sources = [{"title": r["title"] or r["url"], "url": r["url"]} for r in search_results]
 
     # sohbet hafızası için sadeleştirilmiş soruyu kaydet (bağlam bloğu olmadan)
     return {
         "answer": answer,
         "sources": sources,
-        "search_queries": queries,
         "model": model,
-        "grounding": search_source == "google",
         "search_source": search_source,
     }

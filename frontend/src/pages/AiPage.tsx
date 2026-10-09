@@ -12,7 +12,7 @@ interface ChatMessage {
   role: "user" | "model";
   text: string;
   sources?: Source[];
-  search_source?: "google" | "ddgs" | null;
+  search_source?: "tavily" | "ddgs" | null;
 }
 
 const SUGGESTIONS = [
@@ -313,9 +313,9 @@ export default function AiPage() {
                   </ul>
                 </div>
               )}
-              {m.role === "model" && m.search_source === "ddgs" && (
+              {m.role === "model" && (m.search_source === "tavily" || m.search_source === "ddgs") && (
                 <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-up">
-                  🌐 DuckDuckGo web aramasıyla desteklendi — kaynaklar aşağıda
+                  🌐 {m.search_source === "tavily" ? "Tavily" : "DuckDuckGo"} web aramasıyla desteklendi — kaynaklar aşağıda
                 </p>
               )}
               {m.role === "model" && m.search_source === null && (

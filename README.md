@@ -100,9 +100,9 @@ Sağ üstteki **"AI Analist"** sekmesi, Gemini 2.5 Flash ile çalışan kişisel
 - 🔊 **Sesli cevap al:** Yanıtlar Türkçe sesli okunur; düğmeyle kapatılabilir.
 - 📊 **Bağlam bilir:** Fon/hisse detay sayfasındaki "🤖 AI ile Analiz Et" düğmesiyle açılırsa o varlığın canlı verilerini (getiri, risk, F/K…) otomatik okuyup analiz eder.
 - 📁 **Portföyünü bilir:** "Portföyüm dahil" açıkken portföyündeki pozisyonları değerlendirir.
-- 🌐 **Web'de arar:** Güncel bilgi gerektiğinde Google Search ile arar, kullandığı kaynakları listeler.
+- 🌐 **Web'de arar:** Güncel bilgi gerektiğinde **Tavily** (birincil, ~1.000 ücretsiz arama/ay) ile arar; kota biterse veya erişilemezse **DuckDuckGo** anahtarsız devreye girer. Kullandığı kaynakları listeler.
 
-Kurulum: [aistudio.google.com/apikey](https://aistudio.google.com/apikey) → ücretsiz anahtar al → `backend/.env` dosyasına `GEMINI_API_KEY=...` yaz → backend'i yeniden başlat. Anahtar sunucuda kalır, tarayıcıya gönderilmez. Rehber AI yatırım tavsiyesi vermez.
+Kurulum: [aistudio.google.com/apikey](https://aistudio.google.com/apikey) → ücretsiz anahtar al → `backend/.env` dosyasına `GEMINI_API_KEY=...` yaz → backend'i yeniden başlat. Web araması için ayrıca [tavily.com](https://tavily.com) ücretsiz üyeliğiyle `TAVILY_API_KEY=...` eklenir (eklenmezse DuckDuckGo anahtarsız arama devreye girer). Anahtarlar sunucuda kalır, tarayıcıya gönderilmez. Rehber AI yatırım tavsiyesi vermez.
 
 ## Veri kaynakları ve sağlık panosu
 
