@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import crypto, funds, fx, indices, macro, market, portfolio, screener, stocks, us
+from app.routers import crypto, funds, fx, health, indices, macro, market, portfolio, screener, stocks, us
 
 app = FastAPI(title="FinansRehber API", version="0.1.0")
 
@@ -22,6 +22,7 @@ app.include_router(funds.router)
 app.include_router(screener.router)
 app.include_router(portfolio.router)
 app.include_router(macro.router)
+app.include_router(health.router)
 
 
 @app.get("/api/health")
