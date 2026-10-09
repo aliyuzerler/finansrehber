@@ -12,7 +12,7 @@ interface ChatMessage {
   role: "user" | "model";
   text: string;
   sources?: Source[];
-  grounding?: boolean;
+  search_source?: "google" | "ddgs" | null;
 }
 
 const SUGGESTIONS = [
@@ -72,6 +72,21 @@ function speak(text: string) {
   speechSynthesis.speak(utter);
 }
 
+/** Basit markdown: **kalın** + satır başı # işaretlerini düz metne çevirir. */
+function renderMd(text: string) {
+  const clean = text
+    .split("\n")
+    .map((line) => line.replace(/^#{1,4}\s+/, ""))
+    .join("\n");
+  return clean.split("**").map((part, i) =>
+    i % 2 === 1 ? (
+      <strong key={i}>{part}</strong>
+    ) : (
+      <span key={i}>{part}</span>
+    ),
+  );
+}
+
 export default function AiPage() {
   const [searchParams] = useSearchParams();
   const contextParam = searchParams.get("context"); // ör: fund:PGE, stock:THYAO
@@ -126,7 +141,7 @@ export default function AiPage() {
         });
         setMessages((ms) => [
           ...ms,
-          { role: "model", text: data.answer, sources: data.sources, grounding: data.grounding },
+          { role: "model", text: data.answer, sources: data.sources, search_source: data.search_source },
         ]);
         if (voiceOutRef.current) speak(data.answer);
       } catch (err) {
@@ -276,7 +291,7 @@ export default function AiPage() {
                   : "border-line bg-panel text-ink"
               }`}
             >
-              <p className="whitespace-pre-wrap">{m.text}</p>
+              <p className="whitespace-pre-wrap">{renderMd(m.text)}</p>
               {m.role === "model" && m.sources && m.sources.length > 0 && (
                 <div className="mt-3 border-t border-line pt-2">
                   <p className="font-mono text-[10px] uppercase tracking-widest text-faint">
@@ -298,9 +313,14 @@ export default function AiPage() {
                   </ul>
                 </div>
               )}
-              {m.role === "model" && m.grounding === false && (
+              {m.role === "model" && m.search_source === "ddgs" && (
+                <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-up">
+                  🌐 DuckDuckGo web aramasıyla desteklendi — kaynaklar aşağıda
+                </p>
+              )}
+              {m.role === "model" && m.search_source === null && (
                 <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-faint">
-                  🌐 web araması bu anahtarın kotasında kapalı — cevap bağlam verileriyle sınırlı olabilir
+                  🌐 web araması kullanılamadı — cevap bağlam verileriyle sınırlı olabilir
                 </p>
               )}
               {m.role === "model" && (

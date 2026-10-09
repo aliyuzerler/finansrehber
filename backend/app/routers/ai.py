@@ -7,6 +7,7 @@ Soru + sohbet geçmişi + (opsiyonel) bizim verilerimizden bağlam → Gemini
 from __future__ import annotations
 
 import os
+import time
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -154,6 +155,19 @@ def _build_context(req: AskRequest) -> str:
     return "\n\n".join(parts)
 
 
+def _ddgs_search(query: str, max_results: int = 5) -> list[dict]:
+    """Anahtarsız DuckDuckGo araması — Google grounding kotası bitince yedek."""
+    from ddgs import DDGS
+
+    with DDGS() as d:
+        raw = list(d.text(query, max_results=max_results, region="tr-tr"))
+    return [
+        {"title": r.get("title", ""), "url": r.get("href", ""), "body": r.get("body", "")}
+        for r in raw
+        if r.get("href")
+    ]
+
+
 @router.post("/ask")
 def ask(req: AskRequest) -> dict:
     client = _client()
@@ -166,37 +180,66 @@ def ask(req: AskRequest) -> dict:
     else:
         user_text = f"Soru: {req.question}"
 
-    contents: list[types.Content] = []
-    for msg in req.history:
-        contents.append(
-            types.Content(
-                role=msg.role,
-                parts=[types.Part(text=msg.text)],
-            )
-        )
-    contents.append(types.Content(role="user", parts=[types.Part(text=user_text)]))
+    def _contents(text: str) -> list[types.Content]:
+        out: list[types.Content] = []
+        for msg in req.history:
+            out.append(types.Content(role=msg.role, parts=[types.Part(text=msg.text)]))
+        out.append(types.Content(role="user", parts=[types.Part(text=text)]))
+        return out
 
     model = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
 
-    def _generate(use_search: bool):
-        config = types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            tools=[types.Tool(google_search=types.GoogleSearch())] if use_search else None,
-            temperature=0.4,
-        )
-        return client.models.generate_content(model=model, contents=contents, config=config)
+    def _generate(text: str, use_search: bool):
+        """Geçici 429/503 hatalarında kısa geri çekilmeli 2 deneme."""
+        last_exc: Exception | None = None
+        for attempt in range(2):
+            config = types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                tools=[types.Tool(google_search=types.GoogleSearch())] if use_search else None,
+                temperature=0.4,
+            )
+            try:
+                return client.models.generate_content(
+                    model=model, contents=_contents(text), config=config
+                )
+            except Exception as exc:
+                last_exc = exc
+                msg = str(exc)
+                if any(k in msg for k in ("429", "503", "UNAVAILABLE", "overloaded")) and attempt == 0:
+                    time.sleep(2.5)
+                    continue
+                raise
+        raise last_exc  # type: ignore[misc]
+
+    search_source: str | None = None
+    search_results: list[dict] = []
 
     try:
-        resp = _generate(use_search=True)
-        grounding_used = True
+        resp = _generate(user_text, use_search=True)
+        search_source = "google"
+    except HTTPException:
+        raise
     except Exception as exc:
-        if "429" in str(exc):
-            # Google Search grounding ücretsiz kotası bu anahtar için kapalı olabilir —
-            # araçsız devam et, asistan çalışmaya devam etsin.
-            resp = _generate(use_search=False)
-            grounding_used = False
-        else:
+        if "429" not in str(exc):
             raise HTTPException(502, f"Gemini hatası: {str(exc)[:200]}") from exc
+        # Google Search grounding kotası bitmiş olabilir → DuckDuckGo ile kendimiz arar,
+        # sonuçları bağlam olarak verip araçsız yeniden üretiriz.
+        try:
+            search_results = _ddgs_search(req.question)
+        except Exception:
+            search_results = []
+        if search_results:
+            bugun = time.strftime("%d.%m.%Y")
+            blok = "\n".join(f"- {r['title']} ({r['url']}): {r['body']}" for r in search_results)
+            user_text = (
+                f"{user_text}\n\n[WEB ARAMA SONUÇLARI — DuckDuckGo, {bugun}]\n{blok}\n"
+                "[/WEB ARAMA]\nBu sonuçlardaki güncel bilgileri kullan; kullandığın kaynak linklerini cevabının sonunda say."
+            )
+        try:
+            resp = _generate(user_text, use_search=False)
+            search_source = "ddgs" if search_results else None
+        except Exception as exc2:
+            raise HTTPException(502, f"Gemini hatası: {str(exc2)[:200]}") from exc2
 
     answer = resp.text or ""
     if not answer:
@@ -215,6 +258,9 @@ def ask(req: AskRequest) -> dict:
             queries = list(getattr(meta, "web_search_queries", None) or [])
     except Exception:
         pass
+    if search_source == "ddgs" and not sources:
+        # DuckDuckGo fallback: kaynakları biz verdik
+        sources = [{"title": r["title"] or r["url"], "url": r["url"]} for r in search_results]
 
     # sohbet hafızası için sadeleştirilmiş soruyu kaydet (bağlam bloğu olmadan)
     return {
@@ -222,5 +268,6 @@ def ask(req: AskRequest) -> dict:
         "sources": sources,
         "search_queries": queries,
         "model": model,
-        "grounding": grounding_used,
+        "grounding": search_source == "google",
+        "search_source": search_source,
     }
