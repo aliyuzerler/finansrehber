@@ -20,9 +20,12 @@ def list_pairs(quote: str = Query("TRY", pattern="^(TRY|USDT)$")) -> dict:
 
 
 @router.get("")
-def crypto_overview(limit: int = Query(20, ge=1, le=100)) -> dict:
-    """TRY bazlı önde gelen çiftlerin anlık özeti."""
-    pairs = borsapy.crypto_pairs(quote="TRY")
+def crypto_overview(
+    limit: int = Query(20, ge=1, le=100),
+    quote: str = Query("TRY", pattern="^(TRY|USDT)$"),
+) -> dict:
+    """Önde gelen çiftlerin anlık özeti (TRY veya USDT bazlı)."""
+    pairs = borsapy.crypto_pairs(quote=quote)
     # BtcTurk sıralaması popülerlik; ilk `limit` kadarını çek
     selected = pairs[:limit]
     items: list[dict] = []
@@ -33,7 +36,7 @@ def crypto_overview(limit: int = Query(20, ge=1, le=100)) -> dict:
             items.append(cur)
         except Exception as exc:
             errors.append({"pair": pair, "error": str(exc)[:200]})
-    return {"items": items, "errors": errors}
+    return {"items": items, "errors": errors, "quote": quote}
 
 
 @router.get("/{pair}")

@@ -60,8 +60,12 @@ export default function PriceChart({ candles, height = 320 }: PriceChartProps) {
 
     series.setData(data);
     chart.timeScale().fitContent();
-    // autoSize ilk ölçümünü yaptıktan sonra bir kez daha oturt
-    const settle = setTimeout(() => chart.timeScale().fitContent(), 120);
+    // autoSize ilk ölçümünü yaptıktan sonra: veri uzunluğundan hesaplanan aralık
+    // (bayat getVisibleLogicalRange'e güvenme) — kenarlarda ~2 bar nefes payı kalır,
+    // ilk/son ay etiketleri kırpılmaz
+    const settle = setTimeout(() => {
+      chart.timeScale().setVisibleLogicalRange({ from: -2, to: data.length + 4 });
+    }, 120);
 
     return () => {
       clearTimeout(settle);

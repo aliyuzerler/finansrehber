@@ -9,17 +9,20 @@ import { fmtCompact, fmtPct, fmtPrice } from "../lib/format";
 
 export default function CryptoPage() {
   const [items, setItems] = useState<CryptoPair[] | null>(null);
+  const [quote, setQuote] = useState<"TRY" | "USDT">("TRY");
   const [selected, setSelected] = useState<string | null>(null);
   const [candles, setCandles] = useState<Candle[]>([]);
   const [histLoading, setHistLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setItems(null);
+    setSelected(null);
     api
-      .get<{ items: CryptoPair[] }>("/crypto", { params: { limit: 24 } })
+      .get<{ items: CryptoPair[] }>("/crypto", { params: { limit: 24, quote } })
       .then(({ data }) => setItems(data.items))
       .catch((err) => setError(apiErrorMessage(err)));
-  }, []);
+  }, [quote]);
 
   useEffect(() => {
     if (!selected) return;
@@ -34,11 +37,33 @@ export default function CryptoPage() {
 
   return (
     <div>
-      <div className="mb-6 border-b border-line pb-4">
-        <h1 className="text-2xl font-extrabold uppercase tracking-tight text-ink">Kripto</h1>
-        <p className="mt-1 text-sm text-muted">
-          BtcTurk TRY pariteleri — grafiği açmak için bir çift seç.
-        </p>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b border-line pb-4">
+        <div>
+          <h1 className="text-2xl font-extrabold uppercase tracking-tight text-ink">Kripto</h1>
+          <p className="mt-1 text-sm text-muted">
+            BtcTurk pariteleri — grafiği açmak için bir çift seç.
+          </p>
+        </div>
+        <nav className="flex gap-1">
+          {(
+            [
+              ["TRY", "₺ TRY Çiftleri"],
+              ["USDT", "$ USDT Çiftleri"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setQuote(key)}
+              className={`border px-4 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider ${
+                quote === key
+                  ? "border-accent bg-accent text-white"
+                  : "border-line bg-panel text-muted hover:text-ink"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
       </div>
 
       {error && <ErrorBox message={error} onRetry={() => setError(null)} />}

@@ -18,6 +18,9 @@ _POPULAR: list[dict] = [
     {"symbol": "JPY", "label": "Japon Yeni", "group": "doviz"},
     {"symbol": "gram-altin", "label": "Gram Altın", "group": "altin"},
     {"symbol": "gram-gumus", "label": "Gram Gümüş", "group": "altin"},
+    {"symbol": "gram-platin", "label": "Gram Platin", "group": "altin"},
+    {"symbol": "XPT-USD", "label": "Platin (ons $)", "group": "emtia"},
+    {"symbol": "XPD-USD", "label": "Paladyum (ons $)", "group": "emtia"},
     {"symbol": "brent", "label": "Brent Petrol", "group": "emtia"},
 ]
 
