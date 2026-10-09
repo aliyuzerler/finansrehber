@@ -92,6 +92,18 @@ finansrehber/
 
 Önbellekleme: borsapy içinde TTL önbellek (fiyat 60 sn, grafik 1 saat, finansallar 24 saat) + FastAPI tarafında piyasa özeti 60 sn / endeks listesi 120 sn.
 
+## Veri kaynakları ve sağlık panosu
+
+Kodda **elle yazılmış veri linki yoktur** — tüm veriler `borsapy` ve `yfinance` kütüphaneleri üzerinden gelir; kırılma riski kütüphane bakımcılarına aittir ve iki kütüphane de aktif güncellenir.
+
+| Sağlamlık | Kaynak | Beslediği sayfalar |
+|---|---|---|
+| Resmî | TEFAS, TCMB, KAP, BtcTurk | Fonlar, makro, haberler, kripto |
+| Platform | TradingView, Yahoo Finance | Fiyat, grafik, tarama, ABD borsası |
+| Scraper | İş Yatırım, canlidoviz/doviz.com | Finansallar, temettü, analist, döviz/altın |
+
+Ana Sayfa'nın altındaki **"Veri Kaynakları" şeridi** 8 kaynağın canlı sağlığını gösterir (5 dakikada bir yenilenir); programatik erişim için `GET /api/health/sources` endpoint'i her kaynağın durumunu ve yanıt süresini (ms) döner. Bir kaynak kırılırsa uygulama çökmez: ilgili sayfa boş-veri durumuna düşer, diğerleri çalışmaya devam eder.
+
 ## Bilinen notlar
 
 - Veriler **~15 dakika gecikmelidir** (ücretsiz katman). Canlı veri için ücretli TradingView hesabı gerekir.
