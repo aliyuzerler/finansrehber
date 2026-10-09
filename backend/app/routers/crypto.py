@@ -6,6 +6,7 @@ import borsapy
 from fastapi import APIRouter, HTTPException, Query
 
 from app.helpers import df_to_records, history_records, json_safe
+from app.validators import is_crypto_pair
 
 router = APIRouter(prefix="/api/crypto", tags=["crypto"])
 
@@ -42,6 +43,8 @@ def crypto_overview(
 @router.get("/{pair}")
 def crypto_detail(pair: str) -> dict:
     p = pair.strip().upper()
+    if not is_crypto_pair(p):
+        raise HTTPException(422, f"Gecersiz cift: {p[:20]}")
     try:
         cur = json_safe(borsapy.Crypto(p).current)
     except Exception as exc:
@@ -55,8 +58,11 @@ def crypto_history(
     period: str = Query("1mo", pattern="^(1d|5d|1mo|3mo|6mo|1y|2y|5y|10y|ytd|max)$"),
     interval: str = Query("1d", pattern="^(1m|5m|15m|30m|1h|1d|1wk|1mo)$"),
 ) -> dict:
+    p = pair.strip().upper()
+    if not is_crypto_pair(p):
+        raise HTTPException(422, f"Gecersiz cift: {p[:20]}")
     try:
-        hist = borsapy.Crypto(pair.strip().upper()).history(period=period, interval=interval)
+        hist = borsapy.Crypto(p).history(period=period, interval=interval)
     except Exception as exc:
         raise HTTPException(502, f"Geçmiş alınamadı: {exc}") from exc
     if hist is None or hist.empty:

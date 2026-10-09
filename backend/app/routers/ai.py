@@ -38,8 +38,8 @@ class AskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
     history: list[HistoryMessage] = Field(default_factory=list, max_length=30)
     context_type: str | None = Field(None, pattern="^(fund|stock|us_stock|portfolio)$")
-    context_id: str | None = None
-    portfolio: list[dict] | None = Field(None, description="[{symbol, shares, cost}]")
+    context_id: str | None = Field(None, max_length=12)
+    portfolio: list[dict] | None = Field(None, max_length=50, description="[{symbol, shares, cost}]")
 
 
 def _client():
@@ -109,11 +109,15 @@ def _us_stock_context(symbol: str) -> str:
 def _portfolio_context(holdings: list[dict]) -> str:
     import borsapy
 
+    from app.validators import is_symbol
+
     lines = ["Kullanıcının portföyü:"]
     toplam_deger = 0.0
     toplam_maliyet = 0.0
     for h in holdings[:30]:
-        sym = str(h.get("symbol", "")).upper()
+        sym = str(h.get("symbol", "")).strip().upper()
+        if not is_symbol(sym):  # geçersiz sembol ağ çağrısına inmeden atlanır
+            continue
         shares = float(h.get("shares") or 0)
         cost = h.get("cost")
         try:

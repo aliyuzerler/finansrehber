@@ -9,6 +9,7 @@ import borsapy
 from fastapi import APIRouter, HTTPException, Query
 
 from app.helpers import df_to_records, history_records, json_safe
+from app.validators import is_symbol
 
 router = APIRouter(prefix="/api/indices", tags=["indices"])
 
@@ -66,6 +67,8 @@ def list_indices(detailed: bool = Query(False, description="Güncel fiyat/deği�
 @router.get("/{symbol}")
 def index_detail(symbol: str) -> dict:
     sym = symbol.strip().upper()
+    if not is_symbol(sym):
+        raise HTTPException(422, f"Gecersiz endeks: {sym[:20]}")
     try:
         idx = borsapy.Index(sym)
         info = json_safe(idx.info)
@@ -80,8 +83,11 @@ def index_history(
     period: str = Query("1mo", pattern="^(1d|5d|1mo|3mo|6mo|1y|2y|5y|10y|ytd|max)$"),
     interval: str = Query("1d", pattern="^(1d|1wk|1mo)$"),
 ) -> dict:
+    sym = symbol.strip().upper()
+    if not is_symbol(sym):
+        raise HTTPException(422, f"Gecersiz endeks: {sym[:20]}")
     try:
-        hist = borsapy.Index(symbol.strip().upper()).history(period=period, interval=interval)
+        hist = borsapy.Index(sym).history(period=period, interval=interval)
     except Exception as exc:
         raise HTTPException(502, f"Endeks geçmişi alınamadı: {exc}") from exc
     if hist is None or hist.empty:
@@ -91,8 +97,11 @@ def index_history(
 
 @router.get("/{symbol}/components")
 def index_components(symbol: str) -> dict:
+    sym = symbol.strip().upper()
+    if not is_symbol(sym):
+        raise HTTPException(422, f"Gecersiz endeks: {sym[:20]}")
     try:
-        comps = borsapy.Index(symbol.strip().upper()).components
+        comps = borsapy.Index(sym).components
     except Exception as exc:
         raise HTTPException(502, f"Bileşenler alınamadı: {exc}") from exc
     return {"components": json_safe(comps) or []}

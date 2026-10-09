@@ -8,6 +8,7 @@ import yfinance as yf
 from fastapi import APIRouter, HTTPException, Query
 
 from app.helpers import history_records, json_safe
+from app.validators import is_us_symbol
 
 router = APIRouter(prefix="/api/us", tags=["us"])
 
@@ -90,6 +91,8 @@ def us_stocks(refresh: bool = Query(False, description="Önbelleği atla")) -> d
 @router.get("/stocks/{symbol}")
 def us_detail(symbol: str) -> dict:
     sym = symbol.strip().upper()
+    if not is_us_symbol(sym):
+        raise HTTPException(422, f"Gecersiz sembol formati: {sym[:20]}")
     now = time.time()
     cached = _detail_cache.get(sym)
     if cached is not None and now - cached[0] < _DETAIL_TTL:
@@ -124,8 +127,11 @@ def us_history(
     period: str = Query("1mo", pattern="^(1d|5d|1mo|3mo|6mo|1y|2y|5y|10y|ytd|max)$"),
     interval: str = Query("1d", pattern="^(1m|5m|15m|30m|1h|1d|1wk|1mo)$"),
 ) -> dict:
+    sym = symbol.strip().upper()
+    if not is_us_symbol(sym):
+        raise HTTPException(422, f"Gecersiz sembol formati: {sym[:20]}")
     try:
-        hist = yf.Ticker(symbol.strip().upper()).history(period=period, interval=interval, auto_adjust=True)
+        hist = yf.Ticker(sym).history(period=period, interval=interval, auto_adjust=True)
     except Exception as exc:
         raise HTTPException(502, f"Geçmiş alınamadı: {exc}") from exc
     if hist is None or hist.empty:
@@ -138,8 +144,11 @@ def us_history(
 
 @router.get("/stocks/{symbol}/news")
 def us_news(symbol: str) -> dict:
+    sym = symbol.strip().upper()
+    if not is_us_symbol(sym):
+        raise HTTPException(422, f"Gecersiz sembol formati: {sym[:20]}")
     try:
-        news = yf.Ticker(symbol.strip().upper()).news or []
+        news = yf.Ticker(sym).news or []
     except Exception as exc:
         # Yahoo haber API'si sık sık kısıtlar — boş listeyle yumuşak geç
         return {"news": [], "note": str(exc)[:150]}

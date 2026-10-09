@@ -6,6 +6,7 @@ import borsapy
 from fastapi import APIRouter, HTTPException, Query
 
 from app.helpers import df_to_records, history_records, json_safe
+from app.validators import is_symbol
 
 router = APIRouter(prefix="/api/stocks", tags=["stocks"])
 
@@ -55,6 +56,8 @@ def list_stocks(refresh: bool = Query(False, description="Önbelleği atla")) ->
 
 def _ticker(symbol: str) -> borsapy.Ticker:
     sym = symbol.strip().upper().removesuffix(".IS")
+    if not is_symbol(sym):
+        raise HTTPException(422, f"Gecersiz sembol formati: {sym[:20]}")
     try:
         return borsapy.Ticker(sym)
     except Exception as exc:

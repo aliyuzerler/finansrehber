@@ -6,6 +6,7 @@ import borsapy
 from fastapi import APIRouter, HTTPException, Query
 
 from app.helpers import df_to_records, history_records, json_safe
+from app.validators import is_fx_asset
 
 router = APIRouter(prefix="/api/fx", tags=["fx"])
 
@@ -43,8 +44,11 @@ def list_fx() -> dict:
 
 @router.get("/{asset}")
 def fx_detail(asset: str) -> dict:
+    asset = asset.strip().lower()
+    if not is_fx_asset(asset):
+        raise HTTPException(422, f"Gecersiz varlik: {asset[:20]}")
     try:
-        cur = json_safe(borsapy.FX(asset.strip().lower()).current)
+        cur = json_safe(borsapy.FX(asset).current)
     except Exception as exc:
         raise HTTPException(404, f"Varlık bulunamadı: {asset} ({exc})") from exc
     return {"info": cur}
@@ -55,8 +59,11 @@ def fx_history(
     asset: str,
     period: str = Query("1mo", pattern="^(1mo|3mo|6mo|1y|2y|5y|10y|ytd|max)$"),
 ) -> dict:
+    asset = asset.strip().lower()
+    if not is_fx_asset(asset):
+        raise HTTPException(422, f"Gecersiz varlik: {asset[:20]}")
     try:
-        hist = borsapy.FX(asset.strip().lower()).history(period=period)
+        hist = borsapy.FX(asset).history(period=period)
     except Exception as exc:
         raise HTTPException(502, f"Geçmiş alınamadı: {exc}") from exc
     if hist is None or hist.empty:
