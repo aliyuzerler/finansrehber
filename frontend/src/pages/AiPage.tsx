@@ -12,6 +12,7 @@ interface ChatMessage {
   role: "user" | "model";
   text: string;
   sources?: Source[];
+  grounding?: boolean;
 }
 
 const SUGGESTIONS = [
@@ -123,7 +124,10 @@ export default function AiPage() {
           context_id: cid || null,
           portfolio,
         });
-        setMessages((ms) => [...ms, { role: "model", text: data.answer, sources: data.sources }]);
+        setMessages((ms) => [
+          ...ms,
+          { role: "model", text: data.answer, sources: data.sources, grounding: data.grounding },
+        ]);
         if (voiceOutRef.current) speak(data.answer);
       } catch (err) {
         const msg = apiErrorMessage(err);
@@ -293,6 +297,11 @@ export default function AiPage() {
                     ))}
                   </ul>
                 </div>
+              )}
+              {m.role === "model" && m.grounding === false && (
+                <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-faint">
+                  🌐 web araması bu anahtarın kotasında kapalı — cevap bağlam verileriyle sınırlı olabilir
+                </p>
               )}
               {m.role === "model" && (
                 <button

@@ -176,19 +176,27 @@ def ask(req: AskRequest) -> dict:
         )
     contents.append(types.Content(role="user", parts=[types.Part(text=user_text)]))
 
-    model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
-    try:
-        resp = client.models.generate_content(
-            model=model,
-            contents=contents,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                tools=[types.Tool(google_search=types.GoogleSearch())],
-                temperature=0.4,
-            ),
+    model = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+
+    def _generate(use_search: bool):
+        config = types.GenerateContentConfig(
+            system_instruction=SYSTEM_PROMPT,
+            tools=[types.Tool(google_search=types.GoogleSearch())] if use_search else None,
+            temperature=0.4,
         )
+        return client.models.generate_content(model=model, contents=contents, config=config)
+
+    try:
+        resp = _generate(use_search=True)
+        grounding_used = True
     except Exception as exc:
-        raise HTTPException(502, f"Gemini hatası: {str(exc)[:200]}") from exc
+        if "429" in str(exc):
+            # Google Search grounding ücretsiz kotası bu anahtar için kapalı olabilir —
+            # araçsız devam et, asistan çalışmaya devam etsin.
+            resp = _generate(use_search=False)
+            grounding_used = False
+        else:
+            raise HTTPException(502, f"Gemini hatası: {str(exc)[:200]}") from exc
 
     answer = resp.text or ""
     if not answer:
@@ -209,4 +217,10 @@ def ask(req: AskRequest) -> dict:
         pass
 
     # sohbet hafızası için sadeleştirilmiş soruyu kaydet (bağlam bloğu olmadan)
-    return {"answer": answer, "sources": sources, "search_queries": queries, "model": model}
+    return {
+        "answer": answer,
+        "sources": sources,
+        "search_queries": queries,
+        "model": model,
+        "grounding": grounding_used,
+    }
