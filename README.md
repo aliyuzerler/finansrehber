@@ -4,6 +4,22 @@ Türk finans piyasaları için masaüstü web panosu — [borsapy](https://githu
 
 **Tasarım:** siyah + kırmızı, keskin çizgiler (oval/yuvarlak öğe yok), monospace rakamlar, yoğun finans görünümü.
 
+| Ana Sayfa | Hisse Detayı |
+|---|---|
+| ![Ana Sayfa](docs/ana-sayfa.png) | ![Hisse Detayı](docs/hisse-detay.png) |
+| **Fon Detayı** | **Portföy** |
+| ![Fon Detayı](docs/fon-detay.png) | ![Portföy](docs/portfoy.png) |
+
+## Neden FastAPI köprüsü?
+
+borsapy bir **Python** kütüphanesi olduğu için React'ten doğrudan kullanılamaz. FinansRehber bu yüzden iki katmanlı çalışır:
+
+```
+React (5173) ──/api──▶ FastAPI (8000) ──▶ borsapy ──▶ TradingView / İş Yatırım / TEFAS / BtcTurk / KAP / TCMB
+```
+
+Backend, borsapy çağrılarını temiz REST endpoint'lerine çevirir; pandas/NaN/timestamp gibi Python değerlerini JSON'a güvenle dönüştürür ve kendi TTL önbelleğini ekler.
+
 ## Kategoriler
 
 | Sayfa | İçerik | Veri kaynağı |
